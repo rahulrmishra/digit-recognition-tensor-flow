@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 
 class DrawingPainter extends CustomPainter {
   final List<Offset> points;
-  DrawingPainter({this.points});
+
+  DrawingPainter(this.points);
+
   final Paint _paint = Paint()
     ..strokeCap = StrokeCap.round
     ..color = Colors.black

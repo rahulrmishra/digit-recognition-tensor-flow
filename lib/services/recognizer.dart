@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 import 'dart:ui';
-
 import 'package:digit_recognizer_ml/utils/constants.dart';
 import 'package:flutter/material.dart';
+
 import 'package:tflite/tflite.dart';
 
 final _canvasCullRect = Rect.fromPoints(
@@ -10,20 +10,34 @@ final _canvasCullRect = Rect.fromPoints(
   Offset(Constants.imageSize, Constants.imageSize),
 );
 
-final _bgPaint = Paint()..color = Colors.black;
-
 final _whitePaint = Paint()
   ..strokeCap = StrokeCap.round
   ..color = Colors.white
   ..strokeWidth = Constants.strokeWidth;
 
+final _bgPaint = Paint()..color = Colors.black;
+
 class Recognizer {
   Future loadModel() {
     Tflite.close();
+
     return Tflite.loadModel(
       model: "assets/mnist.tflite",
       labels: "assets/mnist.txt",
     );
+  }
+
+  dispose() {
+    Tflite.close();
+  }
+
+  Future<Uint8List> previewImage(List<Offset> points) async {
+    final picture = _pointsToPicture(points);
+    final image = await picture.toImage(
+        Constants.mnistImageSize, Constants.mnistImageSize);
+    var pngBytes = await image.toByteData(format: ImageByteFormat.png);
+
+    return pngBytes.buffer.asUint8List();
   }
 
   Future recognize(List<Offset> points) async {
@@ -31,6 +45,10 @@ class Recognizer {
     Uint8List bytes =
         await _imageToByteListUint8(picture, Constants.mnistImageSize);
     return _predict(bytes);
+  }
+
+  Future _predict(Uint8List bytes) {
+    return Tflite.runModelOnBinary(binary: bytes);
   }
 
   Future<Uint8List> _imageToByteListUint8(Picture pic, int size) async {
@@ -51,23 +69,11 @@ class Recognizer {
     return resultBytes.buffer.asUint8List();
   }
 
-  Future _predict(Uint8List bytes) {
-    return Tflite.runModelOnBinary(binary: bytes);
-  }
-
-  Future<Uint8List> previewImage(List<Offset> points) async {
-    final picture = _pointsToPicture(points);
-    final image = await picture.toImage(
-        Constants.mnistImageSize, Constants.mnistImageSize);
-    var pngBytes = await image.toByteData(format: ImageByteFormat.png);
-
-    return pngBytes.buffer.asUint8List();
-  }
-
   Picture _pointsToPicture(List<Offset> points) {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder, _canvasCullRect)
       ..scale(Constants.mnistImageSize / Constants.canvasSize);
+
     canvas.drawRect(
         Rect.fromLTWH(0, 0, Constants.imageSize, Constants.imageSize),
         _bgPaint);
